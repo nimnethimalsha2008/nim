@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>NimNeth - Official Portfolio | Audio Player</title>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', 'Segoe UI', system-ui, -apple-system, 'Inter', sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0a1a, #03010a);
+            color: #eee;
+            line-height: 1.5;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Intro Video Overlay */
+        .intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease;
+        }
+        
+        .intro-video-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+        
+        .intro-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .intro-video.ratio-16-9 {
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+        
+        .skip-intro-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: 2px solid cyan;
+            padding: 10px 24px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 10001;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            font-size: 1rem;
+        }
+        
+        .skip-intro-btn:hover {
+            background: cyan;
+            color: #000;
+            box-shadow: 0 0 20px cyan;
+            border-color: magenta;
+        }
+        
+        .volume-control {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: 2px solid cyan;
+            padding: 10px 18px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 10001;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .volume-control:hover {
+            background: cyan;
+            color: #000;
+            box-shadow: 0 0 20px cyan;
+            border-color: magenta;
+        }
+        
+        .audio-unlock-message {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: cyan;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            border: 1px solid cyan;
+            pointer-events: none;
+            z-index: 10002;
+            white-space: nowrap;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+            50% { opacity: 1; transform: translateX(-50%) scale(1.05); }
+            100% { opacity: 0.6; transform: translateX(-50%) scale(1); }
+        }
+        
+        .main-content {
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        
+        .main-content.visible {
+            opacity: 1;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            width: 200%;
+            height: 200%;
+            top: -50%;
+            left: -50%;
+            background: 
+                radial-gradient(circle at 30% 30%, rgba(0,255,255,0.15), transparent 40%),
+                radial-gradient(circle at 70% 60%, rgba(255,0,255,0.15), transparent 40%),
+                radial-gradient(circle at 50% 80%, rgba(0,150,255,0.15), transparent 40%);
+            animation: moveGlow 25s linear infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes moveGlow {
+            0% { transform: translate(0%, 0%) rotate(0deg); }
+            50% { transform: translate(10%, -10%) rotate(180deg); }
+            100% { transform: translate(0%, 0%) rotate(360deg); }
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                repeating-linear-gradient(transparent 0px, transparent 2px, rgba(0, 255, 255, 0.02) 2px, rgba(255, 0, 255, 0.02) 4px),
+                radial-gradient(circle at 70% 40%, rgba(0, 255, 255, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+            animation: subtleShift 20s infinite alternate;
+        }
+
+        @keyframes subtleShift {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 5% 10%; }
+        }
+
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.6;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        .neon-text {
+            font-size: 3.2rem;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 
+                0 0 5px #0ff,
+                0 0 10px #0ff,
+                0 0 20px #0ff,
+                0 0 40px #f0f,
+                0 0 80px #f0f;
+            animation: flicker 3s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { text-shadow: 0 0 2px cyan, 0 0 5px cyan, 0 0 15px magenta; opacity: 0.95; }
+            100% { text-shadow: 0 0 8px cyan, 0 0 20px cyan, 0 0 35px magenta, 0 0 60px magenta; opacity: 1; }
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin: 2rem 0 1.5rem;
+            border-left: 5px solid #0ff;
+            padding-left: 1rem;
+            text-shadow: 0 0 5px #0ff;
+            letter-spacing: 1px;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 2.5rem;
+            margin: 2rem 0 3rem;
+            background: rgba(10, 10, 30, 0.5);
+            backdrop-filter: blur(6px);
+            border-radius: 3rem;
+            padding: 2rem;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .profile-image {
+            flex-shrink: 0;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, cyan, white);
+            padding: 4px;
+            box-shadow: 0 0 20px cyan, 0 0 40px rgba(255, 0, 255, 0.5);
+            transition: transform 0.3s ease;
+        }
+        .profile-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            background: #111;
+        }
+        .artist-name {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #0ff, white);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .bio {
+            margin-top: 0.8rem;
+            font-size: 1rem;
+            color: #ddd;
+        }
+
+        /* Audio Player Section - ONLY PLAYBACK, NO DOWNLOAD */
+        .audio-player-section {
+            background: rgba(15, 15, 35, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            padding: 1.8rem;
+            margin: 2rem 0 2rem;
+            border: 1px solid rgba(255, 0, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        .audio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+        .audio-card {
+            background: rgba(0, 0, 0, 0.65);
+            border-radius: 1.5rem;
+            padding: 1.2rem;
+            border: 1px solid cyan;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+        .audio-card:hover {
+            border-color: magenta;
+            box-shadow: 0 0 18px rgba(255, 0, 255, 0.5);
+            transform: translateY(-4px);
+        }
+        .audio-info {
+            width: 100%;
+        }
+        .audio-title {
+            font-weight: bold;
+            color: #0ff;
+            font-size: 1rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .audio-title i {
+            font-size: 1.2rem;
+            color: #f0f;
+        }
+        .audio-meta {
+            font-size: 0.75rem;
+            color: #bbb;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .audio-meta span {
+            background: rgba(0,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+        /* Custom audio player styling */
+        audio {
+            width: 100%;
+            border-radius: 40px;
+            outline: none;
+            margin-top: 8px;
+        }
+        audio::-webkit-media-controls-panel {
+            background: linear-gradient(135deg, #0a0a2a, #1a1a3a);
+        }
+        audio::-webkit-media-controls-current-time-display,
+        audio::-webkit-media-controls-time-remaining-display {
+            color: #0ff;
+        }
+        .playback-note {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: #8af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        hr {
+            border-color: rgba(0,255,255,0.3);
+            margin: 0.5rem 0;
+        }
+
+        /* social & others */
+        .social-links {
+            display: flex;
+            gap: 1.8rem;
+            justify-content: center;
+            margin: 1.2rem 0;
+        }
+        .social-icon {
+            font-size: 2rem;
+            color: #ccc;
+            transition: all 0.25s ease;
+        }
+        .social-icon:hover {
+            transform: translateY(-5px) scale(1.1);
+        }
+        .social-icon.youtube:hover { color: #ff0033; text-shadow: 0 0 12px #ff0033; }
+        .social-icon.instagram:hover { color: #e4405f; text-shadow: 0 0 12px #e4405f; }
+        .social-icon.facebook:hover { color: #1877f2; text-shadow: 0 0 12px #1877f2; }
+        .social-icon.tiktok:hover { color: #00f2ea; text-shadow: 0 0 12px #00f2ea; }
+
+        .videos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        .video-card {
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(8px);
+            border-radius: 24px;
+            overflow: hidden;
+            transition: 0.3s;
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            cursor: pointer;
+        }
+        .video-card:hover {
+            transform: translateY(-8px);
+            border-color: #f0f;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.4);
+        }
+        .video-thumb img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            display: block;
+        }
+        .video-info {
+            padding: 1rem;
+        }
+        .video-title {
+            font-weight: bold;
+            color: #0ff;
+            text-shadow: 0 0 3px cyan;
+        }
+        .load-more-btn {
+            background: transparent;
+            border: 2px solid cyan;
+            color: cyan;
+            padding: 0.7rem 2rem;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 1rem;
+        }
+        .load-more-btn:hover {
+            background: cyan;
+            color: #000;
+            box-shadow: 0 0 20px cyan;
+            border-color: magenta;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        .gallery-item {
+            border-radius: 20px;
+            overflow: hidden;
+            aspect-ratio: 1 / 1;
+            border: 1px solid rgba(0,255,255,0.6);
+            transition: 0.3s;
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+        .gallery-item:hover {
+            border-color: #f0f;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+        }
+        .gallery-item:hover img {
+            transform: scale(1.08);
+        }
+        .contact-section {
+            background: rgba(15, 15, 35, 0.7);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+        }
+        .contact-details p {
+            margin-bottom: 1rem;
+        }
+        .contact-details a {
+            color: cyan;
+            text-decoration: none;
+        }
+        .video-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #000000cc;
+            width: 90%;
+            max-width: 1000px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 2px solid cyan;
+            position: relative;
+        }
+        .modal-content iframe {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border: none;
+        }
+        .close-modal {
+            position: absolute;
+            top: 12px;
+            right: 20px;
+            font-size: 40px;
+            color: cyan;
+            cursor: pointer;
+            z-index: 10;
+            font-weight: bold;
+        }
+        .close-modal:hover {
+            color: magenta;
+            transform: scale(1.1);
+        }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            border-top: 1px solid rgba(0,255,255,0.3);
+            margin-top: 2rem;
+            font-size: 0.85rem;
+        }
+        .load-more-container {
+            text-align: center;
+            margin: 1rem 0 2rem;
+        }
+        @media (max-width: 700px) {
+            .container { padding: 1rem; }
+            .neon-text { font-size: 2rem; }
+            .audio-grid { grid-template-columns: 1fr; }
+            .profile-section { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- INTRO VIDEO OVERLAY -->
+<div class="intro-overlay" id="introOverlay">
+    <div class="intro-video-container">
+        <video id="introVideo" class="intro-video ratio-16-9" autoplay playsinline>
+            <source src="INTRO.mp4" type="video/mp4">
+        </video>
+        <button class="skip-intro-btn" id="skipIntroBtn">SKIP INTRO <i class="fas fa-forward"></i></button>
+        <button class="volume-control" id="volumeControlBtn">
+            <i class="fas fa-volume-mute" id="volumeIcon"></i>
+            <span id="volumeText">UNMUTE</span>
+        </button>
+        <div class="audio-unlock-message" id="audioUnlockMsg">
+            <i class="fas fa-music"></i> Click "UNMUTE" to enable audio
+        </div>
+    </div>
+</div>
+
+<div class="main-content" id="mainContent">
+    <canvas id="particleCanvas"></canvas>
+    <div class="container">
+        <header><h1 class="neon-text">NIMNETH</h1></header>
+
+        <div class="profile-section">
+            <div class="profile-image">
+                <img src="Nimneth.jpg.jpeg" alt="Artist profile">
+            </div>
+            <div class="profile-info">
+                <div class="artist-name">NimNeth</div>
+                <div class="bio">Creative editor specializing in video editing, music remixing, and photo editing. Bringing ideas to life with unique visuals and sound.</div>
+            </div>
+        </div>
+
+        <!-- ========== AUDIO PLAYER SECTION (ONLY PLAYBACK - NO DOWNLOAD BUTTONS) ========== -->
+        <h2><i class="fas fa-headphones"></i> MASHUP / REMIXES</h2>
+        <div class="audio-player-section">
+            <p style="margin-bottom: 1rem; color: #bbf; text-align: center;">
+                <i class="fas fa-play-circle"></i> Click play to stream NimNeth's exclusive remixes & mashups. High quality audio.
+            </p>
+            <div class="audio-grid" id="audioGrid"></div>
+            
+        </div>
+
+        <!-- YouTube Videos Section -->
+        <h2><i class="fab fa-youtube"></i> LATEST VIDEOS</h2>
+        <div class="videos-grid" id="videosGrid"></div>
+        <div class="load-more-container">
+            <button class="load-more-btn" id="loadMoreVideosBtn"><i class="fas fa-plus-circle"></i> LOAD MORE VIDEOS</button>
+        </div>
+
+        <!-- Gallery Section -->
+        <h2><i class="fas fa-images"></i> DIGITAL GALLERY</h2>
+        <div class="gallery-grid" id="galleryGrid"></div>
+
+        <!-- Contact Section -->
+        <h2><i class="fas fa-address-card"></i> CONNECT WITH ME</h2>
+        <div class="contact-section">
+            <div class="contact-details">
+                <p><i class="fas fa-envelope"></i> Email: <a href="mailto:nimnethimalsha1234@gmail.com">nimnethimalsha1234@gmail.com</a></p>
+                <p><i class="fas fa-phone-alt"></i> Phone: <a href="tel:+94774682321">+94 77 468 2321</a></p>
+            </div>
+            <div class="social-links">
+                <a href="https://youtube.com/@n_music_records?si=nrmFqM93fFz4P-dL" class="social-icon youtube" target="_blank"><i class="fab fa-youtube"></i></a>
+                <a href="https://instagram.com/nimneththambugala" class="social-icon instagram" target="_blank"><i class="fab fa-instagram"></i></a>
+                <a href="https://facebook.com/YOUR_PROFILE" class="social-icon facebook" target="_blank"><i class="fab fa-facebook-f"></i></a>
+                <a href="https://tiktok.com/@nimneth_imalsha_" class="social-icon tiktok" target="_blank"><i class="fab fa-tiktok"></i></a>
+            </div>
+        </div>
+        <footer>
+            <p>NimNeth</p>
+            <p style="margin-top: 0.5rem;">© 2026 All Rights Reserved</p>
+        </footer>
+    </div>
+
+    <div class="video-modal" id="videoModal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <iframe id="modalIframe" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+    // -------------------- INTRO & AUDIO HANDLING --------------------
+    const introOverlay = document.getElementById('introOverlay');
+    const mainContent = document.getElementById('mainContent');
+    const introVideo = document.getElementById('introVideo');
+    const skipIntroBtn = document.getElementById('skipIntroBtn');
+    const volumeControlBtn = document.getElementById('volumeControlBtn');
+    const volumeIcon = document.getElementById('volumeIcon');
+    const volumeText = document.getElementById('volumeText');
+    const audioUnlockMsg = document.getElementById('audioUnlockMsg');
+    let isAudioEnabled = false;
+
+    function enableAudio() {
+        if (introVideo && !isAudioEnabled) {
+            introVideo.muted = false;
+            isAudioEnabled = true;
+            volumeIcon.className = 'fas fa-volume-up';
+            volumeText.textContent = 'MUTE';
+            if (audioUnlockMsg) { 
+                audioUnlockMsg.style.opacity = '0'; 
+                setTimeout(() => { if(audioUnlockMsg) audioUnlockMsg.style.display = 'none'; }, 500); 
+            }
+            const playPromise = introVideo.play();
+            if (playPromise !== undefined) playPromise.catch(e => console.log("playback issue"));
+        }
+    }
+    function muteAudio() {
+        if (introVideo && isAudioEnabled) {
+            introVideo.muted = true;
+            isAudioEnabled = false;
+            volumeIcon.className = 'fas fa-volume-mute';
+            volumeText.textContent = 'UNMUTE';
+        }
+    }
+    if(volumeControlBtn) {
+        volumeControlBtn.addEventListener('click', (e) => { e.stopPropagation(); isAudioEnabled ? muteAudio() : enableAudio(); });
+    }
+    function hideIntroAndShowContent() {
+        if(introVideo) introVideo.pause();
+        introOverlay.style.opacity = '0';
+        setTimeout(() => {
+            introOverlay.style.display = 'none';
+            mainContent.classList.add('visible');
+            if (typeof initParticles === 'function') initParticles();
+        }, 800);
+    }
+    if(skipIntroBtn) skipIntroBtn.addEventListener('click', hideIntroAndShowContent);
+    if(introVideo) {
+        introVideo.addEventListener('ended', hideIntroAndShowContent);
+        introVideo.muted = true;
+        introVideo.play().catch(e => { if(audioUnlockMsg) audioUnlockMsg.style.display = 'block'; });
+        introVideo.addEventListener('click', () => { if (!isAudioEnabled) enableAudio(); });
+    }
+    setTimeout(() => { 
+        if(introOverlay && introOverlay.style.display !== 'none' && introVideo && introVideo.paused && introVideo.currentTime === 0) 
+            hideIntroAndShowContent(); 
+    }, 5000);
+
+    // ---------- AUDIO TRACKS (PLAY ONLY - NO DOWNLOAD BUTTONS) ----------
+    const audioTracks = [
+        { title: "Dilu - Ahimi Ee Dasa ReMix  NimNeth", duration: "3:36", audioUrl: "Dilu - Ahimi Ee Dasa( අහම ඒ දස) ReMix  NimNeth.mp3" },
+        { title: "Dalada Waram (Remix)  Dj NimNeth  Kavee Dz  Sinhala Remix Songs", duration: "3:10", audioUrl: "Dalada Waram (Remix)  Dj NimNeth  Kavee Dz  Sinhala Remix Songs.mp3" },
+        { title: "Ramidu - Kodukara Sihine ReMix  NimNeth  Dilu Beats", duration: "4:06", audioUrl: "Ramidu - Kodukara Sihine (කඩකර සහන) ReMix  NimNeth  Dilu Beats.mp3" },
+        { title: "Dilu - Nohadan Priyawe Remix NimNeth ", duration: "4:47", audioUrl: "Nohadan Priyawe Remix new.mp3" },
+        { title: "Sandula ft.Nethsara - Ma Niwem Premi ReMix  NimNeth", duration: "4:02", audioUrl: "Sandula ft.Nethsara - Ma Niwem Premi (ඈ සඳනර මග පය) ReMix  NimNeth.mp3" },
+        { title: "Raveen Tharuka - Mata Danena Remix  NimNeth", duration: "4:04", audioUrl: "මට දනන Remix  NimNeth  2026.mp3?filename=electronic-128.mp3" }
+    ];
+
+    function renderAudioPlayers() {
+        const container = document.getElementById('audioGrid');
+        if(!container) return;
+        container.innerHTML = '';
+        audioTracks.forEach((track, idx) => {
+            const card = document.createElement('div');
+            card.className = 'audio-card';
+            card.innerHTML = `
+                <div class="audio-info">
+                    <div class="audio-title">
+                        <i class="fas fa-waveform"></i> ${track.title}
+                    </div>
+                    <div class="audio-meta">
+                        <span><i class="far fa-clock"></i> ${track.duration}</span>
+                        <span><i class="fas fa-headphones"></i> Remix Audio </span>
+                    </div>
+                    <audio controls preload="metadata" style="width:100%;">
+                        <source src="${track.audioUrl}" type="audio/mpeg">
+                        Your browser does not support the audio element.
+                    </audio>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    // Video Data (YouTube)
+    const allVideos = [
+        { id: "wBwypoUVk8w", title: "Valentine Mashup 2026 | EVO BEATS X NimNeth" },
+        { id: "NVDUc-Rxbhw", title: "Kopara Kopara ReMix | Wick Liyo X NimNeth" },
+        { id: "CxquQrel9Co", title: "Diss Battle | Rap Mashup 2026 | EVO BEATS X NimNeth" },
+        { id: "LsWsYlQBDKE", title: "Ahimi Ee Dasa ReMix | NimNeth" },
+        { id: "pYFSxXyDXuM", title: "Year End Mashup | HITS OF 2025 | EVO BEATS X NimNeth" },
+        { id: "PM3ecwYtB_o", title: "Buru Buru ReMix | NimNeth" }
+    ];
+    let visibleVideosCount = 3;
+    const videosGrid = document.getElementById('videosGrid');
+    const loadMoreBtn = document.getElementById('loadMoreVideosBtn');
+    const videoModal = document.getElementById('videoModal');
+    const modalIframe = document.getElementById('modalIframe');
+    const closeModalBtn = document.querySelector('.close-modal');
+    
+    function renderVideos() {
+        const toShow = allVideos.slice(0, visibleVideosCount);
+        videosGrid.innerHTML = '';
+        toShow.forEach(v => {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            card.setAttribute('data-id', v.id);
+            card.innerHTML = `
+                <div class="video-thumb">
+                    <img src="https://img.youtube.com/vi/${v.id}/hqdefault.jpg" loading="lazy" alt="${v.title}">
+                    <div class="play-overlay" style="position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; opacity:0; transition:0.3s;">
+                        <i class="fas fa-play-circle" style="font-size:3rem; color:cyan; text-shadow:0 0 10px magenta;"></i>
+                    </div>
+                </div>
+                <div class="video-info">
+                    <div class="video-title">✦ ${v.title}</div>
+                </div>
+            `;
+            // Add hover effect for play overlay
+            const thumbDiv = card.querySelector('.video-thumb');
+            const overlay = thumbDiv.querySelector('.play-overlay');
+            thumbDiv.addEventListener('mouseenter', () => { overlay.style.opacity = '1'; });
+            thumbDiv.addEventListener('mouseleave', () => { overlay.style.opacity = '0'; });
+            card.addEventListener('click', () => openVideoModal(v.id));
+            videosGrid.appendChild(card);
+        });
+        if(visibleVideosCount >= allVideos.length) {
+            if(loadMoreBtn) loadMoreBtn.style.display = 'none';
+        } else {
+            if(loadMoreBtn) loadMoreBtn.style.display = 'inline-block';
+        }
+    }
+    
+    function openVideoModal(id) { 
+        modalIframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`; 
+        videoModal.style.display = 'flex'; 
+        document.body.style.overflow = 'hidden'; 
+    }
+    function closeModal() { 
+        modalIframe.src = ''; 
+        videoModal.style.display = 'none'; 
+        document.body.style.overflow = 'auto'; 
+    }
+    if(loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => { 
+            visibleVideosCount = Math.min(visibleVideosCount + 2, allVideos.length); 
+            renderVideos(); 
+        });
+    }
+    if(closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+    window.addEventListener('click', (e) => { if(e.target === videoModal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if(e.key === 'Escape' && videoModal.style.display === 'flex') closeModal(); });
+
+    // Gallery Images
+    const galleryItems = ["p1.jpeg","p2.jpeg","p3.jpeg","p4.jpeg","p5.jpeg","p6.jpeg"];
+    const galleryGrid = document.getElementById('galleryGrid');
+    function renderGallery() { 
+        if(galleryGrid){
+            galleryGrid.innerHTML = galleryItems.map((src,i)=>`
+                <div class="gallery-item">
+                    <img src="${src}" loading="lazy" alt="Artwork ${i+1}" onerror="this.src='https://via.placeholder.com/400x400/1a1035/0ff?text=Image+${i+1}'">
+                </div>
+            `).join('');
+        } 
+    }
+    renderGallery();
+
+    // Particles Animation
+    const canvas = document.getElementById('particleCanvas');
+    let ctx = canvas?.getContext('2d');
+    let particles = [], particleCount = 100, animFrame;
+    function resizeCanvas(){ if(canvas){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; } }
+    window.addEventListener('resize', ()=>{ resizeCanvas(); initParticles(); });
+    resizeCanvas();
+    class Particle { 
+        constructor() { 
+            this.x = Math.random() * (canvas?.width || 1000); 
+            this.y = Math.random() * (canvas?.height || 800); 
+            this.size = Math.random()*3+1; 
+            this.speedX = (Math.random()-0.5)*0.5; 
+            this.speedY = (Math.random()-0.5)*0.5; 
+            this.color = `hsla(${Math.random()*60+280},100%,65%,${Math.random()*0.6+0.2})`; 
+        } 
+        update() { 
+            if(canvas){ 
+                this.x += this.speedX; 
+                if(this.x<0) this.x=canvas.width; 
+                if(this.x>canvas.width) this.x=0; 
+                this.y += this.speedY; 
+                if(this.y<0) this.y=canvas.height; 
+                if(this.y>canvas.height) this.y=0; 
+            } 
+        } 
+        draw() { 
+            if(ctx){ 
+                ctx.beginPath(); 
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); 
+                ctx.fillStyle = this.color; 
+                ctx.shadowBlur = 6; 
+                ctx.shadowColor = '#0ff'; 
+                ctx.fill(); 
+            } 
+        } 
+    }
+    function initParticles() { if(!canvas) return; particles = []; for(let i=0;i<particleCount;i++) particles.push(new Particle()); }
+    function animateParticles() { if(!ctx||!canvas) return; ctx.clearRect(0,0,canvas.width,canvas.height); particles.forEach(p=>{ p.update(); p.draw(); }); animFrame = requestAnimationFrame(animateParticles); }
+    if(canvas && ctx) { initParticles(); animateParticles(); }
+
+    // Initialize all components
+    renderAudioPlayers();
+    renderVideos();
+
+    // Intersection Observer for fade-in animations
+    const animatedElements = document.querySelectorAll('.video-card, .gallery-item, .contact-section, .profile-section, .audio-player-section');
+    const observer = new IntersectionObserver((entries) => { 
+        entries.forEach(e=>{ 
+            if(e.isIntersecting){ 
+                e.target.style.opacity='1'; 
+                e.target.style.transform='translateY(0)'; 
+                observer.unobserve(e.target); 
+            } 
+        }); 
+    }, { threshold: 0.1 });
+    animatedElements.forEach(el => { 
+        el.style.opacity = '0'; 
+        el.style.transform = 'translateY(30px)'; 
+        el.style.transition = 'opacity 0.6s ease, transform 0.5s ease'; 
+        observer.observe(el); 
+    });
+    const checkVis = setInterval(() => { 
+        if(mainContent.classList.contains('visible')){ 
+            setTimeout(()=>{ 
+                animatedElements.forEach(el=>{ 
+                    const rect = el.getBoundingClientRect(); 
+                    if(rect.top < window.innerHeight-50){ 
+                        el.style.opacity='1'; 
+                        el.style.transform='translateY(0)'; 
+                    } 
+                }); 
+            },200); 
+            clearInterval(checkVis); 
+        } 
+    }, 500);
+</script>
+</body>
+</html>
